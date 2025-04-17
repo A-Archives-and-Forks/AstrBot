@@ -88,6 +88,7 @@ class Main(star.Star):
 /tts: 开关文本转语音
 /sid: 获取会话 ID
 /op: 管理员
+/bl: 黑名单
 /wl: 白名单
 /dashboard_update: 更新管理面板(op)
 /alter_cmd: 设置指令权限(op)
@@ -309,8 +310,8 @@ class Main(star.Star):
         """获取会话 ID 和 管理员 ID"""
         sid = event.unified_msg_origin
         user_id = str(event.get_sender_id())
-        ret = f"""SID: {sid} 此 ID 可用于设置会话白名单。
-/wl <SID> 添加白名单, /dwl <SID> 删除白名单。
+        ret = f"""SID: {sid} 此 ID 可用于设置会话黑白名单。
+/wl <SID> 添加白名单, /dwl <SID> 删除黑白名单。
 
 UID: {user_id} 此 ID 可用于设置管理员。
 /op <UID> 授权管理员, /deop <UID> 取消管理员。"""
@@ -319,7 +320,7 @@ UID: {user_id} 此 ID 可用于设置管理员。
             self.context.get_config()["platform_settings"]["unique_session"]
             and event.get_group_id()
         ):
-            ret += f"\n\n当前处于独立会话模式, 此群 ID: {event.get_group_id()}, 也可将此 ID 加入白名单来放行整个群聊。"
+            ret += f"\n\n当前处于独立会话模式, 此群 ID: {event.get_group_id()}, 也可将此 ID 加入黑白名单来放行整个群聊。"
 
         event.set_result(MessageEventResult().message(ret).use_t2i(False))
 
@@ -377,6 +378,33 @@ UID: {user_id} 此 ID 可用于设置管理员。
             event.set_result(MessageEventResult().message("删除白名单成功。"))
         except ValueError:
             event.set_result(MessageEventResult().message("此 SID 不在白名单内。"))
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command("bl")
+    async def bl(self, event: AstrMessageEvent, sid: str = None):
+        """添加黑名单。bl <sid>"""
+        if sid is None:
+            event.set_result(
+                MessageEventResult().message(
+                    "使用方法: /bl <id> 添加黑名单；/dbl <id> 删除黑名单。可通过 /sid 获取 ID。"
+                )
+            )
+        self.context.get_config()["platform_settings"]["id_blacklist"].append(str(sid))
+        self.context.get_config().save_config()
+        event.set_result(MessageEventResult().message("添加黑名单成功。"))
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command("dbl")
+    async def dbl(self, event: AstrMessageEvent, sid: str):
+        """删除黑名单。dbl <sid>"""
+        try:
+            self.context.get_config()["platform_settings"]["id_blacklist"].remove(
+                str(sid)
+            )
+            self.context.get_config().save_config()
+            event.set_result(MessageEventResult().message("删除黑名单成功。"))
+        except ValueError:
+            event.set_result(MessageEventResult().message("此 SID 不在黑名单内。"))
 
     @filter.command("provider")
     async def provider(
@@ -882,7 +910,9 @@ UID: {user_id} 此 ID 可用于设置管理员。
             assert isinstance(provider, ProviderDify)
             dify_cid = provider.conversation_ids.pop(message.unified_msg_origin, None)
             if dify_cid:
-                await provider.api_client.delete_chat_conv(message.unified_msg_origin, dify_cid)
+                await provider.api_client.delete_chat_conv(
+                    message.unified_msg_origin, dify_cid
+                )
             message.set_result(
                 MessageEventResult().message(
                     "删除当前对话成功。不再处于对话状态，使用 /switch 序号 切换到其他对话或 /new 创建。"
@@ -1233,7 +1263,9 @@ UID: {user_id} 此 ID 可用于设置管理员。
                 if mood_dialogs := persona["_mood_imitation_dialogs_processed"]:
                     req.system_prompt += "\nHere are few shots of dialogs, you need to imitate the tone of 'B' in the following dialogs to respond:\n"
                     req.system_prompt += mood_dialogs
-                if (begin_dialogs := persona["_begin_dialogs_processed"]) and not req.contexts:
+                if (
+                    begin_dialogs := persona["_begin_dialogs_processed"]
+                ) and not req.contexts:
                     req.contexts[:0] = begin_dialogs
 
         if quote and quote.message_str:

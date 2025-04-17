@@ -18,6 +18,7 @@ DEFAULT_CONFIG = {
         "reply_prefix": "",
         "forward_threshold": 1500,
         "enable_id_white_list": True,
+        "id_blacklist": [],
         "id_whitelist": [],
         "id_whitelist_log": True,
         "wl_ignore_admin_on_group": True,
@@ -349,6 +350,13 @@ CONFIG_METADATA_2 = {
                         "description": "转发消息的字数阈值",
                         "type": "int",
                         "hint": "超过一定字数后，机器人会将消息折叠成 QQ 群聊的 “转发消息”，以防止刷屏。目前仅 QQ 平台适配器适用。",
+                    },
+                    "id_blacklist": {
+                        "description": "ID 黑名单",
+                        "type": "list",
+                        "items": {"type": "string"},
+                        "obvious_hint": True,
+                        "hint": "不处理填写的 ID 发来的消息事件，可使用 /sid 获取 ID。管理员可使用 /bl 添加黑名单。黑名单优先级高于白名单。",
                     },
                     "enable_id_white_list": {
                         "description": "启用 ID 白名单",

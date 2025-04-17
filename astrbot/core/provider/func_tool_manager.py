@@ -187,6 +187,22 @@ class FuncCall:
         self.func_list.append(_func)
         logger.info(f"添加函数调用工具: {name}")
 
+    def add_func_from_raw_tool_def(self, tool_def: dict) -> None:
+        """添加函数调用工具
+
+        @param tool_def: 函数定义，格式为 {"name": "func_name", "parameters": {...}, "description": "func_description"}
+        """
+        self.remove_func(tool_def["name"])
+
+        _func = FuncTool(
+            name=tool_def["name"],
+            parameters=tool_def["parameters"],
+            description=tool_def["description"],
+            origin="local",
+        )
+        self.func_list.append(_func)
+        logger.info(f"添加函数调用工具: {tool_def['name']}")
+
     def remove_func(self, name: str) -> None:
         """
         删除一个函数调用工具。

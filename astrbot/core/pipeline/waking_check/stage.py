@@ -39,6 +39,10 @@ class WakingCheckStage(Stage):
         self.ignore_bot_self_message = self.ctx.astrbot_config["platform_settings"].get(
             "ignore_bot_self_message", False
         )
+        # blacklist
+        self.blacklist = self.ctx.astrbot_config["platform_settings"].get(
+            "id_blacklist", []
+        )
 
     async def process(
         self, event: AstrMessageEvent
@@ -163,3 +167,16 @@ class WakingCheckStage(Stage):
 
         if not is_wake:
             event.stop_event()
+
+        if self.blacklist:
+            print(event.unified_msg_origin, self.blacklist)
+            # 检查黑名单
+            if (
+                event.unified_msg_origin in self.blacklist
+                or event.get_group_id() in self.blacklist
+            ):
+                logger.info(
+                    f"会话({event.unified_msg_origin}) 在黑名单中，已终止事件传播。"
+                )
+                event.stop_event()
+                return
