@@ -1,0 +1,43 @@
+name: PR Title Check
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  title-format:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      issues: write
+
+    steps:
+      - name: Validate PR title
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = (context.payload.pull_request.title || "").trim();
+            // allow only:
+            // feat: xxx
+            // feat(scope): xxx
+            const pattern = /^(feat)(\([a-z0-9-]+\))?:\s.+$/i;
+
+            const isValid = pattern.test(title);
+            if (!isValid) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: [
+                  "⚠️ PR title format check failed.",
+                  "Required formats:",
+                  "- `feat: xxx`",
+                  "- `feat(scope): xxx`",
+                  "Please update your PR title and push again."
+                ].join("\n")
+              });
+            }
+
+            if (!isValid) {
+              core.setFailed("Invalid PR title. Expected format: feat: xxx or feat(scope): xxx.");
+            }
